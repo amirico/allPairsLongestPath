@@ -1,0 +1,153 @@
+import numpy as np
+import networkx as nx
+import copy
+import random
+
+# Add a source node to a graph with edges weighting 0 to all other nodes.
+def addSourceNode(graph, nodesAmount):
+    nodeAdded = np.zeros((nodesAmount + 1, nodesAmount + 1), graph.dtype)
+    nodeAdded[:, -1] = float('Inf')
+    nodeAdded[:-1, :-1] = graph
+    return nodeAdded
+
+def invertWeights(graph):
+    return (-graph)
+
+# Find shortest paths of nodes in a given graph from a given source with Bellman Ford's algorithm.
+def bellman_ford(graph, source):
+    nodes = range(len(graph))
+    distance = {}
+    predecessor = {}
+
+    for node in nodes:
+        distance[node] = float('Inf')
+        predecessor[node] = None
+        distance[source] = 0
+
+    for j in range(len(graph) - 1):
+        for node in nodes:
+            for neighbour in nodes:
+                if graph[node][neighbour] != -float('Inf') and distance[neighbour] > distance[node] + graph[node][neighbour]:
+                    distance[neighbour] = distance[node] + graph[node][neighbour]
+                    predecessor[neighbour] = node
+
+    for node in nodes:
+        for neighbour in nodes:
+            if graph[node][neighbour] != -float('Inf'):
+                assert distance[neighbour] <= distance[node] + graph[node][neighbour]
+    return distance, predecessor
+
+# Reweight edges weights computed by the Bellman-Fords's algorithm using:
+# Edge's New Wheight = Edge's Old Weight + Node's Shortest Distance from Source - Neighbour's Shortest Distance from Source.
+def reweight(distance, graph):
+    nodes = range(len(graph))
+    reweighted_gr = copy.deepcopy(graph)
+    for node in nodes:
+        for neighbour in nodes:
+            if graph[node][neighbour] != -float('Inf'):
+                reweighted_gr[node][neighbour] = graph[node][neighbour] + distance[node] - distance[neighbour]
+    return reweighted_gr
+
+# Find the shortest path of nodes in a given graph from a given source with Dijkstra's algorithm.
+def dijkstra(graph, source):
+    nodes = range(len(graph))
+    distance = {}
+    predecessor = {}
+    queue = set()
+
+    for node in nodes:
+        distance[node] = float('Inf')
+        predecessor[node] = None
+        queue.add(node)
+        distance[source] = 0
+
+    while queue:
+        remaining_distances = {node: dists for node, dists in distance.items() if node in queue}
+        nextNode = min(remaining_distances, key=remaining_distances.get)
+        queue.remove(nextNode)
+
+        for node in nodes:
+            if graph[nextNode][node] != - float('Inf') and node in queue:
+                if graph[nextNode][node] + distance[nextNode] < distance[node]:
+                    distance[node] = graph[nextNode][node] + distance[nextNode]
+                    distance[node] = graph[nextNode][node] + distance[nextNode]
+                    predecessor[node] = nextNode
+    return (distance, predecessor)
+
+# Find all the longest paths between all pairs in a given graph. The shortest path is found by the algorithm
+# after inverting the weights of the edges between all the pairs gives the longest path in the original graph.
+def findAllPairsLongestPath(graph):
+    allPairsLongestPaths = {}
+    newNodeAdded = addSourceNode(graph, len(graph))
+    invertedValues = invertWeights(newNodeAdded)
+    distance, predecessor = bellman_ford(invertedValues, len(graph))
+    reweightedGraph = reweight(distance, invertedValues)
+    newNodeRemoved = reweightedGraph[:-1, :-1]
+
+    for source in range(len(graph)):
+        distance, predecessor = dijkstra(newNodeRemoved, source)
+        paths = (buildPaths(predecessor, source))
+        allPairsLongestPaths.update({source:paths})
+    return allPairsLongestPaths
+
+def run():
+    exampleMatrix = [[0.0, 20.0, 0.0, 0.0, 79.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 45.0, 0.0, 87.0],
+     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 14.0, 0.0, 0.0, 0.0, 23.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+     [0.0, 0.0, 0.0, 0.0, 0.0, 28.0, 0.0, 0.0, 0.0, 45.0, 0.0, 0.0, 10.0, 0.0, 0.0, 0.0],
+     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 57.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 7.0, 0.0, 0.0, 13.0, 0.0],
+     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 34.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 21.0, 0.0, 11.0, 0.0, 0.0, 0.0],
+     [0.0, 0.0, 0.0, 12.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 32.0, 0.0, 0.0],
+     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 86.0, 0.0, 0.0, 0.0, 0.0],
+     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 5.0, 0.0, 0.0],
+     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 13.0],
+     [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]]
+
+    infsGraph = transformZerosToInfs(np.asarray(exampleMatrix))
+    allPairsLongestPath = (findAllPairsLongestPath(infsGraph))
+    printPaths(allPairsLongestPath)
+
+# Transform zeros in a matrix to infinity to match the input specification.
+def transformZerosToInfs(matrix):
+    nodes = range(len(matrix))
+    for node in nodes:
+        for neighbour in nodes:
+            if matrix[node][neighbour] == 0:
+                matrix[node][neighbour] = float('Inf')
+    return matrix
+
+# Build the sequences of the paths of all nodes with predecessors.
+def buildPaths(predecessor, source):
+    longestPaths = {}
+    nodes = range(len(predecessor))
+    for node in nodes:
+        if node != source and predecessor[node] is not None:
+            path = populatePath(predecessor, node, node, [])
+            longestPaths.update({node:path})
+    return longestPaths
+
+# Construct the sequence of the path for a pair of nodes.
+def populatePath(predecessor, source, node, path):
+    headOfList = 0
+    if predecessor[node] == None:
+        path.insert(headOfList,node)
+        return path
+    path.insert(headOfList,node)
+    path = populatePath(predecessor, source, predecessor[node], path)
+    return path
+
+# Print the longest path for each pair of nodes.
+def printPaths(paths):
+    for source in paths:
+        if paths[source]:
+            print "longest paths for node " + str(source) + ":"
+            for node in sorted(paths[source]):
+                print "\t\t\t\t\t\t ", str(node) + ":\t", paths[source][node]
+
+if __name__ == "__main__":
+    run()
